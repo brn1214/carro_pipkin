@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Rover Control</title>
+    <style>
+        body { background-color: #121212; color: #00e5ff; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; touch-action: none; user-select: none; }
+        #video-container { flex-grow: 1; display: flex; justify-content: center; background: #000; position: relative; }
+        #video-feed { height: 100%; object-fit: contain; }
+        #controls { padding: 20px; display: flex; justify-content: space-around; align-items: center; background: #1a1a1a; height: 180px;}
+        .btn { width: 80px; height: 80px; border: 2px solid #444; border-radius: 50%; background: #222; color: #fff; font-weight: bold; display: grid; place-items: center; cursor: pointer; }
+        .btn.active { background: #d32f2f; border-color: #ff5252; box-shadow: 0 0 15px #ff5252; }
+        #zone { width: 150px; height: 150px; background: rgba(255,255,255,0.05); border: 2px solid #333; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; }
+        #knob { width: 50px; height: 50px; background: #00e5ff; border-radius: 50%; position: absolute; box-shadow: 0 0 10px #00e5ff; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="video-container"><img id="video-feed" src="/stream.mjpg"></div>
+    <div id="controls">
+        <div class="btn" id="turboBtn" onclick="toggleTurbo()">TURBO<br><span id="spdVal">20%</span></div>
+        <div id="zone"><div id="knob"></div></div>
+    </div>
+
+    <script>
+        let maxSpeed = 0.2; // 20%
+        let lastSentTime = 0;
+        const sendInterval = 100; // Limite de 10 envios/seg
+        let controller = null;
+
+        function toggleTurbo() {
+            const btn = document.getElementById('turboBtn');
+            const val = document.getElementById('spdVal');
+            if (maxSpeed === 0.2) { maxSpeed = 1.0; btn.classList.add('active'); val.innerText = "100%"; } 
+            else { maxSpeed = 0.2; btn.classList.remove('active'); val.innerText = "20%"; }
+        }
+
+        const zone = document.getElementById('zone');
+        const knob = document.getElementById('knob');
+        let rect = zone.getBoundingClientRect();
+        const maxDist = 50; 
+
+        function sendDrive(x, y, force = false) {
+            const now = Date.now();
+            if (!force && (now - lastSentTime < sendInterval)) return;
+
+            if (controller) controller.abort();
+            controller = new AbortController();
+
+            // Formateo estricto para evitar errores en Python
+            let sx = (x * maxSpeed).toFixed(2);
+            let sy = (y * maxSpeed).toFixed(2);
+
+            fetch(`/drive?x=${sx}&y=${sy}`, { 
+                signal: controller.signal, cache: "no-store", keepalive: true 
+            }).catch(() => {});
+
+            lastSentTime = now;
+        }
+
+        function updateJoystick(e) {
+            e.preventDefault();
+            const touch = e.targetTouches ? e.targetTouches[0] : e;
+            rect = zone.getBoundingClientRect();
+            let dx = touch.clientX - (rect.left + rect.width/2);
+            let dy = touch.clientY - (rect.top + rect.height/2);
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > maxDist) {
+                const angle = Math.atan2(dy, dx);
+                dx = Math.cos(angle) * maxDist;
+                dy = Math.sin(angle) * maxDist;
+            }
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            sendDrive(dx/maxDist, dy/maxDist);
+        }
+
+        function stopCar() {
+            knob.style.transform = `translate(0px, 0px)`;
+            // ENVIAR PARADA ABSOLUTA: 3 veces para asegurar recepción
+            sendDrive(0, 0, true);
+            setTimeout(() => sendDrive(0, 0, true), 50);
+            setTimeout(() => sendDrive(0, 0, true), 100);
+        }
+
+        zone.addEventListener('pointerdown', e => {
+            zone.setPointerCapture(e.pointerId);
+            zone.addEventListener('pointermove', updateJoystick);
+        });
+        zone.addEventListener('pointerup', e => {
+            zone.removeEventListener('pointermove', updateJoystick);
+            zone.releasePointerCapture(e.pointerId);
+            stopCar();
+        });
+        window.addEventListener('resize', () => rect = zone.getBoundingClientRect());
+    </script>
+</body>
+</html>
