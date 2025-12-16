@@ -3,177 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Pipkin Rover V6</title>
+    <title>Pipkin Rover V7 - Keyboard</title>
     <style>
         /* === ESTILO GLOBAL === */
         body { 
             background: #050505; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            margin: 0; 
-            overflow: hidden; 
-            user-select: none; 
-            font-family: 'Courier New', monospace; 
-            color: #0ff; 
+            display: flex; flex-direction: column; height: 100vh; margin: 0; 
+            overflow: hidden; user-select: none; font-family: 'Courier New', monospace; color: #0ff; 
         }
 
-        /* === BARRA DE ESTADO (SIN EMOJIS, PURO CSS) === */
+        /* === BARRA DE ESTADO === */
         #status-bar { 
-            position: absolute; 
-            top: 15px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            z-index: 100;
-            padding: 8px 20px; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            font-size: 16px;
-            background: rgba(0, 0, 0, 0.85); 
-            border: 1px solid #333;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 100;
+            padding: 8px 20px; border-radius: 4px; font-weight: bold; font-size: 16px;
+            background: rgba(0, 0, 0, 0.85); border: 1px solid #333;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        /* El punto indicador de color */
-        #status-dot {
-            width: 12px; height: 12px; border-radius: 50%;
-            background: #555; box-shadow: 0 0 5px #555;
-            transition: all 0.3s;
-        }
-        /* Colores del estado */
-        .ok-text { color: #0f0; text-shadow: 0 0 5px #0f0; }
-        .ok-dot { background: #0f0 !important; box-shadow: 0 0 10px #0f0 !important; }
-        
-        .lag-text { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; }
-        .lag-dot { background: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b !important; }
-        
-        .bad-text { color: #f00; text-shadow: 0 0 5px #f00; }
-        .bad-dot { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; animation: blink 0.5s infinite; }
-        
+        #status-dot { width: 12px; height: 12px; border-radius: 50%; background: #555; box-shadow: 0 0 5px #555; transition: all 0.3s; }
+        .ok-text { color: #0f0; text-shadow: 0 0 5px #0f0; } .ok-dot { background: #0f0 !important; box-shadow: 0 0 10px #0f0 !important; }
+        .lag-text { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; } .lag-dot { background: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b !important; }
+        .bad-text { color: #f00; text-shadow: 0 0 5px #f00; } .bad-dot { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; animation: blink 0.5s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* === CONTENEDOR CENTRAL (LAYOUT) === */
+        /* === CONTENEDOR CENTRAL === */
         #main-stage {
-            flex-grow: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            background: #000;
-            padding: 10px;
-            box-sizing: border-box;
+            flex-grow: 1; display: flex; justify-content: center; align-items: center;
+            width: 100%; background: #000; padding: 10px; box-sizing: border-box;
         }
 
-        /* === MARCO DE VIDEO NEON (AJUSTADO AL 4:3) === */
+        /* === MARCO DE VIDEO NEON === */
         #video-frame {
-            position: relative;
-            /* La magia: Forzamos la relacion de aspecto 4:3 (640x480) */
-            aspect-ratio: 4 / 3;
-            height: 100%; 
-            max-height: 100%;
-            max-width: 100%;
-            
-            /* Borde Neon */
-            border: 3px solid #00e5ff;
-            border-radius: 8px;
-            box-shadow: 
-                0 0 15px rgba(0, 229, 255, 0.6), 
-                inset 0 0 15px rgba(0, 229, 255, 0.4);
-            
-            background: #000;
-            overflow: hidden;
+            position: relative; aspect-ratio: 4 / 3; height: 100%; max-height: 100%; max-width: 100%;
+            border: 3px solid #00e5ff; border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6), inset 0 0 15px rgba(0, 229, 255, 0.4);
+            background: #000; overflow: hidden;
         }
-        
-        #cam { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: fill; /* Forzar que llene el cuadro 4:3 */
-        }
+        #cam { width: 100%; height: 100%; object-fit: fill; }
 
         /* === ZONA DE CONTROLES === */
         #controls { 
-            height: 280px; 
-            background: #111; 
-            display: flex; 
-            flex-direction: row; 
-            justify-content: space-around; 
-            align-items: center; 
-            padding: 10px;
-            border-top: 2px solid #333;
+            height: 280px; background: #111; display: flex; flex-direction: row; 
+            justify-content: space-around; align-items: center; padding: 10px; border-top: 2px solid #333;
         }
 
-        /* === JOYSTICK GIGANTE === */
+        /* === JOYSTICK === */
         #zone { 
-            width: 200px; 
-            height: 200px; 
-            border: 3px solid #444; 
-            border-radius: 50%; 
-            position: relative; 
-            background: radial-gradient(circle, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 70%);
+            width: 200px; height: 200px; border: 3px solid #444; border-radius: 50%; 
+            position: relative; background: radial-gradient(circle, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0) 70%);
             touch-action: none;
         }
         #knob { 
-            width: 70px; 
-            height: 70px; 
-            background: rgba(0, 229, 255, 0.8); 
-            border-radius: 50%; 
-            position: absolute; 
-            top: 65px; left: 65px; 
-            pointer-events: none; 
-            box-shadow: 0 0 20px #00e5ff; 
-            border: 2px solid #fff;
+            width: 70px; height: 70px; border-radius: 50%; position: absolute; top: 65px; left: 65px; 
+            pointer-events: none; border: 2px solid #fff; transition: background 0.2s, box-shadow 0.2s;
         }
+        /* Colores del Knob segun modo */
+        .knob-normal { background: rgba(0, 229, 255, 0.8); box-shadow: 0 0 20px #00e5ff; }
+        .knob-precision { background: rgba(255, 215, 0, 0.8); box-shadow: 0 0 20px #ffd700; border-color: #ffff00 !important; }
 
-        /* === PALANCA DE POTENCIA (THROTTLE) === */
-        #power-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 200px;
-            width: 80px;
-        }
-        #power-label {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ff00de; /* Magenta Neon */
-            margin-bottom: 15px;
-            text-shadow: 0 0 8px #ff00de;
-        }
-        
-        /* SLIDER PERSONALIZADO */
+        /* === SLIDER === */
+        #power-container { display: flex; flex-direction: column; align-items: center; height: 200px; width: 80px; }
+        #power-label { font-size: 20px; font-weight: bold; color: #ff00de; margin-bottom: 15px; text-shadow: 0 0 8px #ff00de; }
         input[type=range] {
-            -webkit-appearance: none; /* Quitar estilo default */
-            writing-mode: bt-lr; /* Vertical IE */
-            -webkit-appearance: slider-vertical; /* Vertical Webkit */
-            width: 60px; /* Riel mas ancho */
-            height: 100%;
-            cursor: pointer;
-            background: transparent;
-	    accent-color: #ff00de;
+            -webkit-appearance: none; writing-mode: bt-lr; -webkit-appearance: slider-vertical; 
+            width: 60px; height: 100%; cursor: pointer; background: transparent; accent-color: #ff00de;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 40px; width: 50px; background: #ff00de; 
+            border: 2px solid #fff; border-radius: 6px; box-shadow: 0 0 15px #ff00de; margin-top: -10px;
         }
         
-        /* El "Punto" o Palanca (Webkit/Chrome/Safari/Android) */
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 40px;  /* 3 veces mas grande */
-            width: 50px;   /* Ancho estilo palanca */
-            background: #ff00de;
-            border: 2px solid #fff;
-            border-radius: 6px;
-            box-shadow: 0 0 15px #ff00de;
-            margin-top: -10px;
-        }
-        /* El "Punto" (Firefox) */
-        input[type=range]::-moz-range-thumb {
-            height: 40px;
-            width: 50px;
-            background: #ff00de;
-            border: 2px solid #fff;
-            border-radius: 6px;
-            box-shadow: 0 0 15px #ff00de;
-        }
+        /* Instrucciones Teclado */
+        #kb-hint { position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #555; text-align: right; }
     </style>
 </head>
 <body>
@@ -185,12 +85,12 @@
     <div id="main-stage">
         <div id="video-frame">
             <img id="cam" src="" onerror="retryVideo(this)">
+            <div id="kb-hint">ARROWS: Move | W/S: Power | R: Precision</div>
         </div>
     </div>
     
     <div id="controls">
-        <div id="zone"><div id="knob"></div></div>
-        
+        <div id="zone"><div id="knob" class="knob-normal"></div></div>
         <div id="power-container">
             <span id="power-label">40%</span>
             <input type="range" id="slider" orient="vertical" min="10" max="100" value="40" oninput="updatePower(this.value)">
@@ -199,10 +99,10 @@
     
     <script>
         document.getElementById('cam').src = `http://${location.hostname}:8001/stream.mjpg`;
-        
         const statusText = document.getElementById('status-text');
         const statusDot = document.getElementById('status-dot');
         const pwrLabel = document.getElementById('power-label');
+        const sliderInput = document.getElementById('slider');
         
         let touch = false, heartbeatTimer = null;
         const zone = document.getElementById('zone'), knob = document.getElementById('knob');
@@ -211,16 +111,27 @@
         let currentX = 0, currentY = 0;
         let maxPower = 40;
         let activeController = null;
+        
+        // VARIABLES TECLADO
+        let precisionMode = false;
+        const keys = { ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false, w:false, s:false, W:false, S:false };
 
         function retryVideo(img) { setTimeout(() => img.src = `http://${location.hostname}:8001/stream.mjpg?t=${Date.now()}`, 1000); }
         
         function updatePower(val) { 
+            // Clamp value
+            val = parseInt(val);
+            if(val > 100) val = 100;
+            if(val < 10) val = 10;
+            
             maxPower = val; 
-            pwrLabel.innerText = val + "%"; 
+            pwrLabel.innerText = val + "%";
+            sliderInput.value = val; // Actualizar visualmente el slider si vino del teclado
+            
             if(touch) sendNow(); 
         }
 
-        // --- MONITOR DE SEÑAL ---
+        // --- MONITOR SEÑAL ---
         async function checkConnection() {
             const start = Date.now();
             try {
@@ -232,69 +143,122 @@
                 if (res.ok) {
                     const latency = Date.now() - start;
                     if(latency < 100) {
-                        statusText.innerText = `ONLINE ${latency}ms`; 
-                        statusText.className = 'ok-text'; statusDot.className = 'ok-dot';
+                        statusText.innerText = `ONLINE ${latency}ms`; statusText.className = 'ok-text'; statusDot.className = 'ok-dot';
                     } else if (latency < 250) {
-                        statusText.innerText = `LAG ${latency}ms`; 
-                        statusText.className = 'lag-text'; statusDot.className = 'lag-dot';
+                        statusText.innerText = `LAG ${latency}ms`; statusText.className = 'lag-text'; statusDot.className = 'lag-dot';
                     } else {
-                        statusText.innerText = `MALA SEÑAL ${latency}ms`; 
-                        statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
+                        statusText.innerText = `MALA SEÑAL ${latency}ms`; statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
                     }
                 }
             } catch (err) { 
-                statusText.innerText = "DESCONECTADO"; 
-                statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
+                statusText.innerText = "DESCONECTADO"; statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
             }
         }
         setInterval(checkConnection, 1000);
 
-        // --- ENVIO ROBUSTO (ANTI-BLOQUEO) ---
+        // --- ENVIO ---
         function sendNow() {
             let x = currentX.toFixed(3);
             let y = currentY.toFixed(3);
-            
             if (activeController) activeController.abort();
             activeController = new AbortController();
             setTimeout(() => { if(activeController) activeController.abort(); }, 150);
 
             fetch(`/drive?x=${x}&y=${y}&s=${maxPower}`, {
-                signal: activeController.signal,
-                keepalive: true,
-                cache: 'no-store'
+                signal: activeController.signal, keepalive: true, cache: 'no-store'
             }).catch(e => {});
         }
 
-        function move(x, y) {
+        // --- LOGICA VISUAL JOYSTICK ---
+        function moveKnob(dx, dy) {
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            currentX = dx/maxR; currentY = dy/maxR;
+            sendNow();
+        }
+
+        // --- EVENTOS TOUCH/MOUSE ---
+        function handlePointer(x, y) {
             let rect = zone.getBoundingClientRect();
             let centerX = rect.left + 100;
             let centerY = rect.top + 100;
             let dx = x - centerX;
             let dy = y - centerY;
             let dist = Math.sqrt(dx*dx + dy*dy);
-            
             if(dist > maxR) { 
                 let a = Math.atan2(dy, dx); 
                 dx = Math.cos(a)*maxR; dy = Math.sin(a)*maxR; 
             }
-            knob.style.transform = `translate(${dx}px, ${dy}px)`;
-            currentX = dx/maxR; currentY = dy/maxR;
-            sendNow();
+            moveKnob(dx, dy);
         }
 
         zone.onpointerdown = e => { 
-            touch = true; zone.setPointerCapture(e.pointerId); 
-            move(e.clientX, e.clientY); 
+            touch = true; zone.setPointerCapture(e.pointerId); handlePointer(e.clientX, e.clientY); 
             clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendNow, 100); 
         };
-        zone.onpointermove = e => { if(touch) move(e.clientX, e.clientY); };
-        
+        zone.onpointermove = e => { if(touch) handlePointer(e.clientX, e.clientY); };
         const stop = () => {
+            if(!touch) return; // Evitar conflicto con teclado
             touch = false; clearInterval(heartbeatTimer);
-            knob.style.transform = `translate(0,0)`; currentX = 0; currentY = 0;
+            moveKnob(0,0);
             sendNow(); setTimeout(sendNow, 50); 
         };
         zone.onpointerup = stop; zone.onpointercancel = stop; zone.onpointerleave = stop;
+
+        // === LOGICA DEL TECLADO ===
+        document.addEventListener('keydown', (e) => {
+            if(e.repeat && e.key.toLowerCase() !== 'w' && e.key.toLowerCase() !== 's') return; 
+            
+            // Toggle Precision (R)
+            if(e.key.toLowerCase() === 'r') {
+                precisionMode = !precisionMode;
+                knob.className = precisionMode ? 'knob-precision' : 'knob-normal';
+                return;
+            }
+            
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = false;
+        });
+
+        // Bucle de teclado (30ms para suavidad)
+        setInterval(() => {
+            if(touch) return; // Si usas el dedo, ignorar teclado
+
+            // 1. Control de Potencia
+            if(keys.w || keys.W) updatePower(maxPower + 2);
+            if(keys.s || keys.S) updatePower(maxPower - 2);
+
+            // 2. Control de Joystick
+            let dx = 0; 
+            let dy = 0;
+            
+            if(keys.ArrowUp) dy -= 1;
+            if(keys.ArrowDown) dy += 1;
+            if(keys.ArrowLeft) dx -= 1;
+            if(keys.ArrowRight) dx += 1;
+
+            // Si hay movimiento
+            if(dx !== 0 || dy !== 0) {
+                // Normalizar diagonales (para que no vaya mas rapido en diagonal)
+                let mag = Math.sqrt(dx*dx + dy*dy);
+                if(mag > 1) { dx /= mag; dy /= mag; }
+
+                // Aplicar Precision
+                let multiplier = precisionMode ? 0.5 : 1.0;
+                
+                // Convertir a pixeles para el Knob
+                let targetX = dx * maxR * multiplier;
+                let targetY = dy * maxR * multiplier;
+                
+                moveKnob(targetX, targetY);
+            } else {
+                // Si no hay teclas, volver al centro (si no estamos tocando)
+                if(currentX !== 0 || currentY !== 0) moveKnob(0, 0);
+            }
+        }, 50);
+
     </script>
 </body>
 </html>
