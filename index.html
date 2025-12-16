@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Pipkin Rover V5</title>
+    <title>Pipkin Rover V6</title>
     <style>
         /* === ESTILO GLOBAL === */
         body { 
@@ -17,7 +18,7 @@
             color: #0ff; 
         }
 
-        /* === BARRA DE ESTADO (MONITOR DE SEÑAL) === */
+        /* === BARRA DE ESTADO (SIN EMOJIS, PURO CSS) === */
         #status-bar { 
             position: absolute; 
             top: 15px; 
@@ -28,36 +29,67 @@
             border-radius: 4px; 
             font-weight: bold; 
             font-size: 16px;
-            background: rgba(0, 0, 0, 0.8); 
+            background: rgba(0, 0, 0, 0.85); 
             border: 1px solid #333;
-            text-shadow: 0 0 5px currentColor;
-            transition: all 0.2s;
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        .ok { color: #0f0; border-color: #0f0 !important; box-shadow: 0 0 10px #0f0; }
-        .lag { color: #ffeb3b; border-color: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b; }
-        .bad { color: #f00; border-color: #f00 !important; box-shadow: 0 0 15px #f00; animation: blink 0.5s infinite; }
+        /* El punto indicador de color */
+        #status-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #555; box-shadow: 0 0 5px #555;
+            transition: all 0.3s;
+        }
+        /* Colores del estado */
+        .ok-text { color: #0f0; text-shadow: 0 0 5px #0f0; }
+        .ok-dot { background: #0f0 !important; box-shadow: 0 0 10px #0f0 !important; }
+        
+        .lag-text { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; }
+        .lag-dot { background: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b !important; }
+        
+        .bad-text { color: #f00; text-shadow: 0 0 5px #f00; }
+        .bad-dot { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; animation: blink 0.5s infinite; }
+        
         @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* === CONTENEDOR DE VIDEO (NEON) === */
-        #video-wrapper { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            position: relative; 
+        /* === CONTENEDOR CENTRAL (LAYOUT) === */
+        #main-stage {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
             background: #000;
-            margin: 10px;
-            border: 2px solid #00e5ff;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.2);
-            border-radius: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* === MARCO DE VIDEO NEON (AJUSTADO AL 4:3) === */
+        #video-frame {
+            position: relative;
+            /* La magia: Forzamos la relacion de aspecto 4:3 (640x480) */
+            aspect-ratio: 4 / 3;
+            height: 100%; 
+            max-height: 100%;
+            max-width: 100%;
+            
+            /* Borde Neon */
+            border: 3px solid #00e5ff;
+            border-radius: 8px;
+            box-shadow: 
+                0 0 15px rgba(0, 229, 255, 0.6), 
+                inset 0 0 15px rgba(0, 229, 255, 0.4);
+            
+            background: #000;
             overflow: hidden;
         }
+        
         #cam { 
             width: 100%; 
             height: 100%; 
-            object-fit: contain; 
-            image-rendering: pixelated; 
+            object-fit: fill; /* Forzar que llene el cuadro 4:3 */
         }
 
         /* === ZONA DE CONTROLES === */
@@ -65,16 +97,16 @@
             height: 280px; 
             background: #111; 
             display: flex; 
-            flex-direction: row; /* Horizontal para separar Joystick y Potencia */
+            flex-direction: row; 
             justify-content: space-around; 
             align-items: center; 
             padding: 10px;
             border-top: 2px solid #333;
         }
 
-        /* === JOYSTICK GIGANTE (IZQUIERDA) === */
+        /* === JOYSTICK GIGANTE === */
         #zone { 
-            width: 200px; /* Mas grande */
+            width: 200px; 
             height: 200px; 
             border: 3px solid #444; 
             border-radius: 50%; 
@@ -83,19 +115,18 @@
             touch-action: none;
         }
         #knob { 
-            width: 70px; /* Knob mas grande */
+            width: 70px; 
             height: 70px; 
             background: rgba(0, 229, 255, 0.8); 
             border-radius: 50%; 
             position: absolute; 
-            top: 65px; /* (200 - 70) / 2 */
-            left: 65px; 
+            top: 65px; left: 65px; 
             pointer-events: none; 
             box-shadow: 0 0 20px #00e5ff; 
             border: 2px solid #fff;
         }
 
-        /* === SLIDER DE POTENCIA VERTICAL (DERECHA) === */
+        /* === PALANCA DE POTENCIA (THROTTLE) === */
         #power-container {
             display: flex;
             flex-direction: column;
@@ -104,31 +135,57 @@
             width: 80px;
         }
         #power-label {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #ff00de; /* Magenta Neon */
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-shadow: 0 0 8px #ff00de;
         }
-        /* Truco para slider vertical compatible */
-        input[type=range][orient=vertical] {
-            writing-mode: bt-lr; /* IE */
-            -webkit-appearance: slider-vertical; /* Webkit */
-            width: 40px;
+        
+        /* SLIDER PERSONALIZADO */
+        input[type=range] {
+            -webkit-appearance: none; /* Quitar estilo default */
+            writing-mode: bt-lr; /* Vertical IE */
+            -webkit-appearance: slider-vertical; /* Vertical Webkit */
+            width: 60px; /* Riel mas ancho */
             height: 100%;
             cursor: pointer;
+            background: transparent;
+	    accent-color: #ff00de;
         }
-        /* Estilo general del slider */
-        input[type=range] {
-            accent-color: #ff00de;
+        
+        /* El "Punto" o Palanca (Webkit/Chrome/Safari/Android) */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 40px;  /* 3 veces mas grande */
+            width: 50px;   /* Ancho estilo palanca */
+            background: #ff00de;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            box-shadow: 0 0 15px #ff00de;
+            margin-top: -10px;
+        }
+        /* El "Punto" (Firefox) */
+        input[type=range]::-moz-range-thumb {
+            height: 40px;
+            width: 50px;
+            background: #ff00de;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            box-shadow: 0 0 15px #ff00de;
         }
     </style>
 </head>
 <body>
-    <div id="status-bar" class="bad">SISTEMA OFF</div>
+    <div id="status-bar">
+        <div id="status-dot" class="bad-dot"></div>
+        <span id="status-text" class="bad-text">SISTEMA OFF</span>
+    </div>
 
-    <div id="video-wrapper">
-        <img id="cam" src="" onerror="retryVideo(this)">
+    <div id="main-stage">
+        <div id="video-frame">
+            <img id="cam" src="" onerror="retryVideo(this)">
+        </div>
     </div>
     
     <div id="controls">
@@ -141,21 +198,18 @@
     </div>
     
     <script>
-        // CONFIGURACIÓN DE VIDEO
         document.getElementById('cam').src = `http://${location.hostname}:8001/stream.mjpg`;
-        const stat = document.getElementById('status-bar');
+        
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
         const pwrLabel = document.getElementById('power-label');
         
-        // VARIABLES DE CONTROL
         let touch = false, heartbeatTimer = null;
         const zone = document.getElementById('zone'), knob = document.getElementById('knob');
-        // Radio maximo: (AnchoZona - AnchoKnob) / 2  => (200 - 70) / 2 = 65
         const maxR = 65; 
         
         let currentX = 0, currentY = 0;
         let maxPower = 40;
-        
-        // ABORT CONTROLLER (El secreto anti-bloqueo)
         let activeController = null;
 
         function retryVideo(img) { setTimeout(() => img.src = `http://${location.hostname}:8001/stream.mjpg?t=${Date.now()}`, 1000); }
@@ -166,43 +220,42 @@
             if(touch) sendNow(); 
         }
 
-        // --- MONITOR DE SEÑAL REAL ---
+        // --- MONITOR DE SEÑAL ---
         async function checkConnection() {
             const start = Date.now();
             try {
                 const controller = new AbortController();
-                // Timeout de 1s para el Ping
                 const timeoutId = setTimeout(() => controller.abort(), 1000);
                 const res = await fetch('/ping', { signal: controller.signal });
                 clearTimeout(timeoutId);
                 
                 if (res.ok) {
                     const latency = Date.now() - start;
-                    // Logica de colores segun latencia
                     if(latency < 100) {
-                        stat.innerText = `🟢 ONLINE ${latency}ms`; stat.className = 'ok';
+                        statusText.innerText = `ONLINE ${latency}ms`; 
+                        statusText.className = 'ok-text'; statusDot.className = 'ok-dot';
                     } else if (latency < 250) {
-                        stat.innerText = `🟡 LAG ${latency}ms`; stat.className = 'lag';
+                        statusText.innerText = `LAG ${latency}ms`; 
+                        statusText.className = 'lag-text'; statusDot.className = 'lag-dot';
                     } else {
-                        stat.innerText = `🔴 MALA SEÑAL ${latency}ms`; stat.className = 'bad';
+                        statusText.innerText = `MALA SEÑAL ${latency}ms`; 
+                        statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
                     }
                 }
             } catch (err) { 
-                stat.innerText = "⛔ DESCONECTADO"; stat.className = 'bad'; 
+                statusText.innerText = "DESCONECTADO"; 
+                statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
             }
         }
         setInterval(checkConnection, 1000);
 
-        // --- ENVIO DE DATOS ---
+        // --- ENVIO ROBUSTO (ANTI-BLOQUEO) ---
         function sendNow() {
             let x = currentX.toFixed(3);
             let y = currentY.toFixed(3);
             
-            // Cancelar peticion anterior si sigue viva
             if (activeController) activeController.abort();
-            
             activeController = new AbortController();
-            // Timeout ultra-corto (150ms) para romper bloqueos
             setTimeout(() => { if(activeController) activeController.abort(); }, 150);
 
             fetch(`/drive?x=${x}&y=${y}&s=${maxPower}`, {
@@ -212,55 +265,35 @@
             }).catch(e => {});
         }
 
-        // --- MATEMATICAS DEL JOYSTICK ---
         function move(x, y) {
             let rect = zone.getBoundingClientRect();
-            // Centrar calculo: (AnchoZona / 2) = 100
             let centerX = rect.left + 100;
             let centerY = rect.top + 100;
-            
             let dx = x - centerX;
             let dy = y - centerY;
-            
             let dist = Math.sqrt(dx*dx + dy*dy);
             
-            // Limitar al circulo
             if(dist > maxR) { 
                 let a = Math.atan2(dy, dx); 
-                dx = Math.cos(a)*maxR; 
-                dy = Math.sin(a)*maxR; 
+                dx = Math.cos(a)*maxR; dy = Math.sin(a)*maxR; 
             }
-            
-            // Mover visualmente el knob (compensando su radio 35px)
-            // CSS Translate es relativo al centro original definido en CSS
             knob.style.transform = `translate(${dx}px, ${dy}px)`;
-            
-            // Normalizar a -1.0 ... 1.0
-            currentX = dx/maxR; 
-            currentY = dy/maxR;
-            
+            currentX = dx/maxR; currentY = dy/maxR;
             sendNow();
         }
 
-        // --- EVENTOS TACTILES ---
         zone.onpointerdown = e => { 
-            touch = true; 
-            zone.setPointerCapture(e.pointerId); 
+            touch = true; zone.setPointerCapture(e.pointerId); 
             move(e.clientX, e.clientY); 
-            clearInterval(heartbeatTimer); 
-            heartbeatTimer = setInterval(sendNow, 100); 
+            clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendNow, 100); 
         };
-        
         zone.onpointermove = e => { if(touch) move(e.clientX, e.clientY); };
         
         const stop = () => {
-            touch = false; 
-            clearInterval(heartbeatTimer);
-            knob.style.transform = `translate(0,0)`; 
-            currentX = 0; currentY = 0;
+            touch = false; clearInterval(heartbeatTimer);
+            knob.style.transform = `translate(0,0)`; currentX = 0; currentY = 0;
             sendNow(); setTimeout(sendNow, 50); 
         };
-        
         zone.onpointerup = stop; zone.onpointercancel = stop; zone.onpointerleave = stop;
     </script>
 </body>
