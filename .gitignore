@@ -1,3 +1,10 @@
+.bashrc
+.profile
+.bash_logout
+.cache/
+.local/
+.sudo_as_admin_successful
+
 __pycache__/
 *.pyc
 *.mjpg
