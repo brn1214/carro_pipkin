@@ -1,34 +1,47 @@
 #!/bin/bash
+trap "echo '🛑 APAGANDO TODO...'; sudo pkill -f python3; exit" SIGINT
 
-# 1. OBTENER IP AUTOMATICAMENTE
 IP=$(hostname -I | awk '{print $1}')
 
-echo "========================================"
-echo "   🚀 INICIANDO PIPKIN ROVER V2.1"
-echo "========================================"
+echo "⚡ Configurando WiFi..."
+sudo iwconfig wlan0 power off
 
-# 2. LIMPIEZA
-echo "🧹 Matando procesos viejos..."
+echo "🛑 LIMPIEZA INICIAL..."
 sudo pkill -f python3
+sleep 2
 
-# 3. CAMARA (SILENCIO REAL DESDE BASH)
-# La variable LIBCAMERA_LOG_LEVELS=none aqui SI funciona
 echo "🎥 Iniciando Cámara..."
-LIBCAMERA_LOG_LEVELS=none python3 camara.py &
+python3 camara.py > /dev/null 2>&1 &
+sleep 2
 
-# 4. MOTORES
 echo "🏎️ Iniciando Motores..."
-python3 motor.py &
+python3 motor_fi.py > /dev/null 2>&1 &
 
-# 5. MOSTRAR LA URL CORRECTA
-echo ""
-echo "✅ SISTEMA LISTO."
-echo "⚠️  IMPORTANTE: No uses 'pipkin.local', es lento."
-echo "👉  USA ESTE LINK EN TU CELULAR:"
-echo ""
-echo "    http://$IP:8000"
-echo ""
-echo "========================================"
+echo "✅ SISTEMA INICIADO: http://$IP:8000"
+echo "👨‍⚕️ ACTIVANDO MONITOR DE RESURRECCIÓN..."
 
-# Mantener script vivo
-wait
+# === BUCLE DE VIGILANCIA ===
+while true; do
+    sleep 3
+    
+    # Intentamos conectar al servidor de motores (timeout 1 segundo)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://localhost:8000/ping)
+
+    if [ "$HTTP_CODE" == "200" ]; then
+        # Todo bien, no hacemos nada
+        :
+    else
+        echo "💀 DETECTADO FALLO (Código: $HTTP_CODE). Resucitando..."
+        
+        # 1. Matamos el proceso zombie
+        sudo pkill -f motor_fi.py
+        
+        # 2. Esperamos un suspiro para liberar el puerto
+        sleep 1
+        
+        # 3. Arrancamos de nuevo
+        python3 motor_fi.py > /dev/null 2>&1 &
+        
+        echo "✨ Motores reiniciados."
+    fi
+done

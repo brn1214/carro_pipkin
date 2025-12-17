@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Pipkin Rover V7 - Keyboard</title>
+    <title>Pipkin Rover V8 - Hybrid</title>
     <style>
-        /* === ESTILO GLOBAL === */
+        /* === ESTILO GLOBAL (Visuales de V7) === */
         body { 
             background: #050505; 
             display: flex; flex-direction: column; height: 100vh; margin: 0; 
@@ -20,9 +20,17 @@
             display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         #status-dot { width: 12px; height: 12px; border-radius: 50%; background: #555; box-shadow: 0 0 5px #555; transition: all 0.3s; }
-        .ok-text { color: #0f0; text-shadow: 0 0 5px #0f0; } .ok-dot { background: #0f0 !important; box-shadow: 0 0 10px #0f0 !important; }
-        .lag-text { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; } .lag-dot { background: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b !important; }
-        .bad-text { color: #f00; text-shadow: 0 0 5px #f00; } .bad-dot { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; animation: blink 0.5s infinite; }
+        
+        /* Clases de Estado (Sin Emojis para evitar errores) */
+        .ok-text { color: #0f0; text-shadow: 0 0 5px #0f0; } 
+        .ok-dot { background: #0f0 !important; box-shadow: 0 0 10px #0f0 !important; }
+        
+        .lag-text { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; } 
+        .lag-dot { background: #ffeb3b !important; box-shadow: 0 0 10px #ffeb3b !important; }
+        
+        .bad-text { color: #f00; text-shadow: 0 0 5px #f00; } 
+        .bad-dot { background: #f00 !important; box-shadow: 0 0 15px #f00 !important; animation: blink 0.5s infinite; }
+        
         @keyframes blink { 50% { opacity: 0.5; } }
 
         /* === CONTENEDOR CENTRAL === */
@@ -38,7 +46,8 @@
             box-shadow: 0 0 15px rgba(0, 229, 255, 0.6), inset 0 0 15px rgba(0, 229, 255, 0.4);
             background: #000; overflow: hidden;
         }
-        #cam { width: 100%; height: 100%; object-fit: fill; }
+        /* ROTA LA CAMARA AQUI SI ESTA AL REVES (transform: rotate(180deg)) */
+        #cam { width: 100%; height: 100%; object-fit: fill; transform: rotate(0deg); }
 
         /* === ZONA DE CONTROLES === */
         #controls { 
@@ -56,7 +65,6 @@
             width: 70px; height: 70px; border-radius: 50%; position: absolute; top: 65px; left: 65px; 
             pointer-events: none; border: 2px solid #fff; transition: background 0.2s, box-shadow 0.2s;
         }
-        /* Colores del Knob segun modo */
         .knob-normal { background: rgba(0, 229, 255, 0.8); box-shadow: 0 0 20px #00e5ff; }
         .knob-precision { background: rgba(255, 215, 0, 0.8); box-shadow: 0 0 20px #ffd700; border-color: #ffff00 !important; }
 
@@ -72,20 +80,19 @@
             border: 2px solid #fff; border-radius: 6px; box-shadow: 0 0 15px #ff00de; margin-top: -10px;
         }
         
-        /* Instrucciones Teclado */
         #kb-hint { position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #555; text-align: right; }
     </style>
 </head>
 <body>
     <div id="status-bar">
         <div id="status-dot" class="bad-dot"></div>
-        <span id="status-text" class="bad-text">SISTEMA OFF</span>
+        <span id="status-text" class="bad-text">CONECTANDO...</span>
     </div>
 
     <div id="main-stage">
         <div id="video-frame">
             <img id="cam" src="" onerror="retryVideo(this)">
-            <div id="kb-hint">ARROWS: Move | W/S: Power | R: Precision</div>
+            <div id="kb-hint">TECLADO: Flechas | W/S: Potencia | R: Precision</div>
         </div>
     </div>
     
@@ -98,91 +105,120 @@
     </div>
     
     <script>
+        // === INICIALIZACION ===
         document.getElementById('cam').src = `http://${location.hostname}:8001/stream.mjpg`;
         const statusText = document.getElementById('status-text');
         const statusDot = document.getElementById('status-dot');
         const pwrLabel = document.getElementById('power-label');
         const sliderInput = document.getElementById('slider');
         
-        let touch = false, heartbeatTimer = null;
-        const zone = document.getElementById('zone'), knob = document.getElementById('knob');
+        const zone = document.getElementById('zone');
+        const knob = document.getElementById('knob');
         const maxR = 65; 
         
         let currentX = 0, currentY = 0;
         let maxPower = 40;
-        let activeController = null;
+        let isTouching = false;
+        let activeController = null; // Para el modo agresivo de red
         
-        // VARIABLES TECLADO
+        // Teclado
         let precisionMode = false;
         const keys = { ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false, w:false, s:false, W:false, S:false };
 
-        function retryVideo(img) { setTimeout(() => img.src = `http://${location.hostname}:8001/stream.mjpg?t=${Date.now()}`, 1000); }
+        function retryVideo(img) { 
+            setTimeout(() => img.src = `http://${location.hostname}:8001/stream.mjpg?t=${Date.now()}`, 1000); 
+        }
         
         function updatePower(val) { 
-            // Clamp value
             val = parseInt(val);
             if(val > 100) val = 100;
             if(val < 10) val = 10;
-            
             maxPower = val; 
             pwrLabel.innerText = val + "%";
-            sliderInput.value = val; // Actualizar visualmente el slider si vino del teclado
+            sliderInput.value = val;
             
-            if(touch) sendNow(); 
+            // Si estamos moviendo, actualizar la velocidad en vivo
+            if(currentX !== 0 || currentY !== 0) sendData(); 
         }
 
-        // --- MONITOR SEÑAL ---
+        // === 1. MONITOR DE SEÑAL ROBUSTO (De V3) ===
         async function checkConnection() {
             const start = Date.now();
             try {
+                // Timeout agresivo de 1 segundo para el ping
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1000);
-                const res = await fetch('/ping', { signal: controller.signal });
+                
+                const res = await fetch('/ping', { signal: controller.signal, cache: "no-store" });
                 clearTimeout(timeoutId);
                 
                 if (res.ok) {
                     const latency = Date.now() - start;
-                    if(latency < 100) {
-                        statusText.innerText = `ONLINE ${latency}ms`; statusText.className = 'ok-text'; statusDot.className = 'ok-dot';
-                    } else if (latency < 250) {
-                        statusText.innerText = `LAG ${latency}ms`; statusText.className = 'lag-text'; statusDot.className = 'lag-dot';
+                    if(latency < 150) {
+                        statusText.innerText = `ONLINE ${latency}ms`; 
+                        statusText.className = 'ok-text'; statusDot.className = 'ok-dot';
+                    } else if (latency < 400) {
+                        statusText.innerText = `LAG ${latency}ms`; 
+                        statusText.className = 'lag-text'; statusDot.className = 'lag-dot';
                     } else {
-                        statusText.innerText = `MALA SEÑAL ${latency}ms`; statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
+                        statusText.innerText = `LENTO ${latency}ms`; 
+                        statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
                     }
+                } else {
+                    throw new Error(res.status);
                 }
             } catch (err) { 
-                statusText.innerText = "DESCONECTADO"; statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
+                let msg = "OFFLINE";
+                if (err.name === 'AbortError') msg = "LAG CRITICO";
+                else if (err.message.includes('Network')) msg = "WIFI CAIDO";
+                
+                statusText.innerText = msg; 
+                statusText.className = 'bad-text'; statusDot.className = 'bad-dot';
             }
         }
         setInterval(checkConnection, 1000);
 
-        // --- ENVIO ---
-        function sendNow() {
-            let x = currentX.toFixed(3);
-            let y = currentY.toFixed(3);
+        // === 2. ENVIO DE DATOS AGRESIVO (De V3) ===
+        // Esta funcion no espera, si tarda mucho corta la conexion y sigue
+        function sendData() {
+            let x = parseFloat(currentX).toFixed(2);
+            let y = parseFloat(currentY).toFixed(2);
+            
+            // Cancelar peticion anterior si existe (evita cola de espera)
             if (activeController) activeController.abort();
+            
             activeController = new AbortController();
+            // Si en 150ms no se envio, matar la peticion (Ruido en la red)
             setTimeout(() => { if(activeController) activeController.abort(); }, 150);
 
             fetch(`/drive?x=${x}&y=${y}&s=${maxPower}`, {
-                signal: activeController.signal, keepalive: true, cache: 'no-store'
-            }).catch(e => {});
+                signal: activeController.signal, 
+                keepalive: true, 
+                cache: 'no-store'
+            }).catch(e => {
+                // Ignoramos errores de envio, el siguiente ciclo lo intentará
+            });
         }
 
-        // --- LOGICA VISUAL JOYSTICK ---
+        // === 3. LOGICA VISUAL JOYSTICK (De V7) ===
         function moveKnob(dx, dy) {
             knob.style.transform = `translate(${dx}px, ${dy}px)`;
-            currentX = dx/maxR; currentY = dy/maxR;
-            sendNow();
+            
+            // Normalizar valores para el motor (-1.0 a 1.0)
+            currentX = dx/maxR; 
+            currentY = dy/maxR;
+            
+            sendData();
         }
 
-        // --- EVENTOS TOUCH/MOUSE ---
+        // === 4. CONTROL TACTIL / MOUSE (V7 + Anti-Ghosting V3) ===
         function handlePointer(x, y) {
             let rect = zone.getBoundingClientRect();
             let centerX = rect.left + 100;
             let centerY = rect.top + 100;
             let dx = x - centerX;
             let dy = y - centerY;
+            
             let dist = Math.sqrt(dx*dx + dy*dy);
             if(dist > maxR) { 
                 let a = Math.atan2(dy, dx); 
@@ -192,69 +228,98 @@
         }
 
         zone.onpointerdown = e => { 
-            touch = true; zone.setPointerCapture(e.pointerId); handlePointer(e.clientX, e.clientY); 
-            clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendNow, 100); 
+            isTouching = true; 
+            zone.setPointerCapture(e.pointerId); 
+            handlePointer(e.clientX, e.clientY); 
         };
-        zone.onpointermove = e => { if(touch) handlePointer(e.clientX, e.clientY); };
+        
+        zone.onpointermove = e => { if(isTouching) handlePointer(e.clientX, e.clientY); };
+        
+        // FUNCION DE PARADA SEGURA (ANTI-FANTASMA)
         const stop = () => {
-            if(!touch) return; // Evitar conflicto con teclado
-            touch = false; clearInterval(heartbeatTimer);
-            moveKnob(0,0);
-            sendNow(); setTimeout(sendNow, 50); 
-        };
-        zone.onpointerup = stop; zone.onpointercancel = stop; zone.onpointerleave = stop;
-
-        // === LOGICA DEL TECLADO ===
-        document.addEventListener('keydown', (e) => {
-            if(e.repeat && e.key.toLowerCase() !== 'w' && e.key.toLowerCase() !== 's') return; 
+            if(!isTouching) return; 
+            isTouching = false;
             
-            // Toggle Precision (R)
+            // Regresar visualmente al centro
+            moveKnob(0,0);
+            
+            // === METRALLETA DE FRENADO (La clave contra el ruido) ===
+            // Enviamos la orden de FRENAR (0,0) 5 veces seguidas cada 50ms
+            // para asegurar que el mensaje atraviese el ruido.
+            let stopCount = 0;
+            const stopInterval = setInterval(() => {
+                currentX = 0; currentY = 0;
+                sendData();
+                stopCount++;
+                if(stopCount > 5) clearInterval(stopInterval);
+            }, 50);
+        };
+        
+        zone.onpointerup = stop; 
+        zone.onpointercancel = stop; 
+        zone.onpointerleave = stop;
+
+        // === 5. LOGICA DE TECLADO (De V7 adaptada) ===
+        document.addEventListener('keydown', (e) => {
+            if(e.repeat && !['w','s','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) return;
+            
             if(e.key.toLowerCase() === 'r') {
                 precisionMode = !precisionMode;
                 knob.className = precisionMode ? 'knob-precision' : 'knob-normal';
                 return;
             }
-            
             if(keys.hasOwnProperty(e.key)) keys[e.key] = true;
         });
 
         document.addEventListener('keyup', (e) => {
-            if(keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if(keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+                
+                // Si soltamos todas las teclas de movimiento, activar Anti-Fantasma
+                if(!keys.ArrowUp && !keys.ArrowDown && !keys.ArrowLeft && !keys.ArrowRight) {
+                    // Frenado rapido para teclado tambien
+                    let kStopCount = 0;
+                    const kStopInterval = setInterval(() => {
+                         // Solo si no estamos tocando la pantalla
+                        if (!isTouching && currentX === 0 && currentY === 0) {
+                            sendData();
+                        }
+                        kStopCount++;
+                        if(kStopCount > 5) clearInterval(kStopInterval);
+                    }, 50);
+                }
+            }
         });
 
-        // Bucle de teclado (30ms para suavidad)
+        // Bucle de teclado
         setInterval(() => {
-            if(touch) return; // Si usas el dedo, ignorar teclado
+            if(isTouching) return; // El tactil tiene prioridad
 
-            // 1. Control de Potencia
+            // Potencia
             if(keys.w || keys.W) updatePower(maxPower + 2);
             if(keys.s || keys.S) updatePower(maxPower - 2);
 
-            // 2. Control de Joystick
-            let dx = 0; 
-            let dy = 0;
-            
+            // Movimiento
+            let dx = 0; let dy = 0;
             if(keys.ArrowUp) dy -= 1;
             if(keys.ArrowDown) dy += 1;
             if(keys.ArrowLeft) dx -= 1;
             if(keys.ArrowRight) dx += 1;
 
-            // Si hay movimiento
             if(dx !== 0 || dy !== 0) {
-                // Normalizar diagonales (para que no vaya mas rapido en diagonal)
+                // Normalizar diagonales
                 let mag = Math.sqrt(dx*dx + dy*dy);
                 if(mag > 1) { dx /= mag; dy /= mag; }
 
-                // Aplicar Precision
+                // Precision
                 let multiplier = precisionMode ? 0.5 : 1.0;
                 
-                // Convertir a pixeles para el Knob
                 let targetX = dx * maxR * multiplier;
                 let targetY = dy * maxR * multiplier;
                 
                 moveKnob(targetX, targetY);
             } else {
-                // Si no hay teclas, volver al centro (si no estamos tocando)
+                // Retorno al centro visual si no hay teclas
                 if(currentX !== 0 || currentY !== 0) moveKnob(0, 0);
             }
         }, 50);
